@@ -38,10 +38,10 @@ class TreeNode {
         }
 
         bool overlap(const shared_ptr<TreeNode> & other, shared_ptr<TreeNode> & inter) {
-            size_t x1 = std::max(start, other.start), x2 = std::min(end, other.end);
+            size_t x1 = std::max(start, other->start), x2 = std::min(end, other->end);
             if (x1 <= x2) {
-                inter.start = x1;
-                inter.end = x2;
+                inter->start = x1;
+                inter->end = x2;
                 return true;
             }
             else
@@ -51,7 +51,7 @@ class TreeNode {
 
 class NodeHasher {
     public:
-        size_t operator()(const shared_ptr<TreeNode> & node) {
+        size_t operator()(const shared_ptr<TreeNode> & node) const {
             return std::hash<size_t>()(node->start) ^ std::hash<size_t>()(node->end);
         }
 };
@@ -74,23 +74,55 @@ class solution {
             while (!qu.empty()) {
                 auto curr = qu.front();
                 qu.pop();
-                result[curr] = sumRange(nums, curr->start, curr->end);
+                result[curr] = sumRange_impl(nums, curr->start, curr->end);
                 if (curr->left != nullptr)
                     qu.push(curr->left);
                 if (curr->right != nullptr)
                     qu.push(curr->right);
             }
+
+            int counts = 0;
+            for (size_t i = 0; i < nums.size(); ++i) {
+                for (size_t j = i; j < nums.size(); ++j) 
+                {   
+                    int sum = sumRange(nums, i, j);
+                    if (sum >= lower && sum <= upper)
+                        counts++;
+                }
+            }
+            return counts;
         }
 
     private:
         int sumRange(const std::vector<int> & nums, size_t start, size_t end) {
+            auto found = find_union(root, start, end);
+            int sum = 0;
+            for (auto node : found)
+                sum += result[node];
+            return sum;
+        }
+
+        int sumRange_impl(const std::vector<int> & nums, size_t start, size_t end) {
             return std::accumulate(nums.begin()+start, nums.begin()+end+1, 0);
         }
 
         std::vector<shared_ptr<TreeNode>> find_union(const shared_ptr<TreeNode> & root, size_t a_start, size_t a_end) {
+            std::vector<shared_ptr<TreeNode>> vec;
             auto curr = std::make_shared<TreeNode>(a_start, a_end, nullptr, nullptr);
             auto temp = std::make_shared<TreeNode>();
-            
+            bool isOverlapped  = curr->overlap(root, temp);
+            if (isOverlapped && temp == root ) {
+                vec.push_back(root);
+            }
+            else if (isOverlapped && !temp->equals(*root)){
+                auto left = find_union(root->left, a_start, a_end);
+                for (auto elm : left)
+                    vec.push_back(elm);
+                auto right = find_union(root->right, a_start, a_end);
+                for (auto elm : right)
+                    vec.push_back(elm);
+            }
+            return vec;
         }
 };
 
